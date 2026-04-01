@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>考試結果 - 緯豆考試系統</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Noto Sans TC', sans-serif; background-color: #f8fafc; min-height: 100vh; }
+    .loading-spinner {
+      display: flex; align-items: center; justify-content: center;
+      min-height: 50vh; flex-direction: column; gap: 1rem; color: #6b7280;
+    }
+    .spinner-circle {
+      width: 48px; height: 48px;
+      border: 4px solid #e5e7eb; border-top-color: #667eea;
+      border-radius: 50%; animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .score-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 16px; padding: 2rem; color: white; text-align: center;
+    }
+    .score-value {
+      font-size: 3.5rem; font-weight: 700; line-height: 1;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+
+    .q-block {
+      background: white; border-radius: 12px; padding: 1.5rem;
+      margin-bottom: 1.25rem;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+      border-left: 4px solid #e5e7eb;
+      transition: all 0.2s;
+    }
+    .q-block.correct   { border-left-color: #22c55e; }
+    .q-block.partial   { border-left-color: #f59e0b; }
+    .q-block.incorrect { border-left-color: #ef4444; }
+
+    .opt-row {
+      display: flex; align-items: center;
+      padding: 0.5rem 0.75rem; border-radius: 8px;
+      margin: 0.3rem 0; font-size: 0.95rem;
+    }
+    .opt-row.sel-correct  { background: #dcfce7; color: #15803d; }
+    .opt-row.sel-wrong    { background: #fee2e2; color: #b91c1c; }
+    .opt-row.unsel-correct{ background: #fefce8; color: #92400e; border: 1px dashed #fbbf24; }
+    .opt-row.normal       { color: #6b7280; }
+
+    .score-pill {
+      display: inline-flex; align-items: center; padding: 0.25rem 0.75rem;
+      border-radius: 9999px; font-size: 0.85rem; font-weight: 600;
+    }
+    .score-pill.full    { background: #dcfce7; color: #15803d; }
+    .score-pill.partial { background: #fef3c7; color: #92400e; }
+    .score-pill.zero    { background: #fee2e2; color: #b91c1c; }
+
+    .review-btn {
+      display: inline-flex; align-items: center;
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      color: white; padding: 0.65rem 1.25rem; border-radius: 8px;
+      font-weight: 500; text-decoration: none; transition: all 0.2s;
+      font-size: 0.9rem;
+    }
+    .review-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(245,158,11,0.35); }
+
+    .back-btn {
+      display: inline-flex; align-items: center;
+      color: #4b5563; transition: color 0.2s; text-decoration: none;
+    }
+    .back-btn:hover { color: #1f2937; }
+  </style>
+</head>
+<body>
+  <nav class="bg-white shadow-sm">
+    <div class="container mx-auto px-4 py-3 flex items-center">
+      <a href="/index.html" class="back-btn">
+        <span class="material-icons mr-1">arrow_back</span>返回考試列表
+      </a>
+    </div>
+  </nav>
+
+  <main class="container mx-auto px-4 py-8 max-w-3xl" id="mainContent">
+    <div class="loading-spinner">
+      <div class="spinner-circle"></div>
+      <p>載入結果中...</p>
+    </div>
+  </main>
+
+  <footer class="bg-gray-100 py-4 mt-8 text-center text-gray-500 text-sm">
+    &copy; 2025 緯豆考試系統
+  </footer>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const EXAM_ID = parseInt(params.get('id') || '0');
+
+    function escHtml(s) {
+      return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    function fmtDate(str) {
+      if (!str) return '-';
+      return new Date(str).toLocaleString('zh-TW', {
+        year:'numeric', month:'2-digit', day:'2-digit',
+        hour:'2-digit', minute:'2-digit'
+      });
+    }
+
+    function isSelected(answerText, optionId, qType) {
+      if (!answerText) return false;
+      if (qType === 'truefalse') return answerText === optionId;
+      return answerText.split(',').includes(String(optionId));
+    }
+
+    function renderResult(data) {
+      const { exam, questions } = data;
+      const totalPossible = questions.reduce((s, q) => s + (q.points || 0), 0);
+      const scored = exam.total_score || 0;
+      const pct = totalPossible > 0 ? Math.round((scored / totalPossible) * 100) : 0;
+
+      let scoreClass = pct >= 60 ? 'text-green-300' : 'text-red-300';
+
+      let html = `
+        <h1 class="text-2xl font-bold text-gray-800 mb-6">${escHtml(exam.title)}</h1>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          <!-- 成績卡 -->
+          <div class="score-card">
+            <p class="text-white/70 mb-1 text-sm">您的得分</p>
+            <div class="score-value">${scored}</div>
+            <div class="text-white/80 mt-1">/ ${totalPossible} 分（${pct}%）</div>
+            <div class="mt-4">
+              <a href="https://n8n.weidoe.com/form/90d4140d-0396-451c-b5e7-703b9479b150"
+                 target="_blank" class="review-btn">
+                <span class="material-icons mr-1" style="font-size:18px">assignment_return</span>
+                申請考卷覆核
+              </a>
+            </div>
+          </div>
+
+          <!-- 考試資訊 -->
+          <div class="bg-white rounded-2xl p-5 shadow-sm">
+            <h2 class="font-semibold text-gray-700 mb-3 flex items-center">
+              <span class="material-icons mr-1 text-blue-500">info</span>考試資訊
+            </h2>
+            <div class="space-y-2 text-sm text-gray-600">
+              <div class="flex items-center"><span class="material-icons mr-2 text-base text-gray-400">schedule</span>考試時長：${exam.duration} 分鐘</div>
+              <div class="flex items-center"><span class="material-icons mr-2 text-base text-gray-400">event</span>考試時間：${fmtDate(exam.start_time)}</div>
+              <div class="flex items-center"><span class="material-icons mr-2 text-base text-gray-400">update</span>提交時間：${fmtDate(exam.submit_time)}</div>
+            </div>
+          </div>
+        </div>
+
+        <h2 class="text-xl font-bold text-gray-800 mb-4">試題作答詳情</h2>`;
+
+      questions.forEach((q, idx) => {
+        const qs = q.question_score || 0;
+        const qp = q.points || 0;
+        const blockClass = qs === qp ? 'correct' : qs > 0 ? 'partial' : 'incorrect';
+        const pillClass  = qs === qp ? 'full'    : qs > 0 ? 'partial' : 'zero';
+
+        html += `
+          <div class="q-block ${blockClass}">
+            <div class="flex justify-between items-start mb-3">
+              <div class="flex items-center gap-2">
+                <span class="bg-blue-600 text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold">${idx+1}</span>
+                <span class="font-semibold text-gray-800">${escHtml(q.question_text).replace(/\n/g,'<br>')}</span>
+              </div>
+              <span class="score-pill ${pillClass} ml-2 flex-shrink-0">${qs} / ${qp}</span>
+            </div>`;
+
+        if (q.image_path) {
+          html += `<img src="${escHtml(q.image_path)}" alt="題目圖片"
+            class="max-w-xs rounded-lg mb-3 shadow-sm" onerror="this.style.display='none'">`;
+        }
+
+        if (q.question_type === 'fill') {
+          const studentAns = q.answer_text || '';
+          const correctAns = q.options.filter(o => o.is_correct).map(o => escHtml(o.text)).join('、');
+          html += `
+            <div class="space-y-2 mt-2">
+              <div class="p-3 bg-gray-50 rounded-lg">
+                <p class="text-xs font-medium text-gray-500 mb-1">學生答案</p>
+                <p class="text-gray-800">${escHtml(studentAns) || '<span class="text-gray-400">（未作答）</span>'}</p>
+              </div>
+              <div class="p-3 bg-green-50 border border-green-200 rounded-lg">
+                <p class="text-xs font-medium text-green-600 mb-1">正確答案</p>
+                <p class="text-green-800 font-medium">${correctAns}</p>
+              </div>
+            </div>`;
+        } else if (q.question_type !== 'fill' && q.options.length > 0) {
+          html += `<div class="mt-2 space-y-1">`;
+          q.options.forEach(opt => {
+            const displayText = q.question_type === 'truefalse'
+              ? (opt.text === 'true' ? 'O（是）' : 'X（否）')
+              : escHtml(opt.text);
+
+            const ansKey = q.question_type === 'truefalse' ? opt.text : opt.id;
+            const selected = isSelected(q.answer_text, ansKey, q.question_type);
+            const correct = !!opt.is_correct;
+
+            let rowClass = 'normal';
+            let icon = 'radio_button_unchecked';
+            if (selected && correct)  { rowClass = 'sel-correct';   icon = 'check_circle'; }
+            if (selected && !correct) { rowClass = 'sel-wrong';     icon = 'cancel'; }
+            if (!selected && correct) { rowClass = 'unsel-correct'; icon = 'radio_button_unchecked'; }
+
+            html += `
+              <div class="opt-row ${rowClass}">
+                <span class="material-icons mr-2" style="font-size:18px">${icon}</span>
+                ${displayText}
+                ${correct ? '<span class="ml-auto text-xs opacity-70">✓ 正確答案</span>' : ''}
+              </div>`;
+          });
+          html += `</div>`;
+        }
+
+        html += `</div>`;
+      });
+
+      document.getElementById('mainContent').innerHTML = html;
+    }
+
+    async function loadResult() {
+      if (!EXAM_ID) { location.href = '/index.html'; return; }
+      try {
+        const res = await fetch(`/api/exam/${EXAM_ID}/result`);
+        if (res.status === 401) { location.href = '/login.html'; return; }
+        if (res.status === 403) {
+          const err = await res.json();
+          document.getElementById('mainContent').innerHTML = `
+            <div class="text-center py-16">
+              <span class="material-icons text-gray-300 text-7xl mb-4">lock</span>
+              <p class="text-xl text-gray-600 font-semibold">${escHtml(err.error || '目前不開放查看答案')}</p>
+              <a href="/index.html" class="inline-block mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">返回考試列表</a>
+            </div>`;
+          return;
+        }
+        if (!res.ok) {
+          const err = await res.json();
+          document.getElementById('mainContent').innerHTML = `
+            <div class="text-center py-16">
+              <span class="material-icons text-red-300 text-7xl mb-4">error_outline</span>
+              <p class="text-xl text-red-600">${escHtml(err.error || '載入失敗')}</p>
+              <a href="/index.html" class="inline-block mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg">返回考試列表</a>
+            </div>`;
+          return;
+        }
+        const data = await res.json();
+        renderResult(data);
+      } catch (e) {
+        document.getElementById('mainContent').innerHTML = `
+          <div class="text-center py-16 text-red-500">網路錯誤：${escHtml(e.message)}</div>`;
+      }
+    }
+
+    loadResult();
+  </script>
+</body>
+</html>

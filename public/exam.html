@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>考試作答 - 緯豆考試系統</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --bg:        #f0f4ff;
+      --surface:   #ffffff;
+      --border:    #dde4fb;
+      --primary:   #5168e8;
+      --pri-light: #eef0fd;
+      --pri-hover: #3f52c7;
+      --text:      #1e2a5a;
+      --muted:     #6b7ea8;
+      --danger:    #ef4444;
+      --warn-bg:   #fff7ed;
+      --warn-border:#fed7aa;
+      --warn-text: #9a3412;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0; min-height: 100vh;
+    }
+
+    /* ── Navbar ── */
+    .navbar {
+      background: var(--surface);
+      border-bottom: 1.5px solid var(--border);
+      position: sticky; top: 0; z-index: 1000;
+      box-shadow: 0 1px 12px rgba(81,104,232,0.1);
+    }
+    .navbar-inner {
+      max-width: 820px; margin: 0 auto;
+      padding: 0 1.25rem;
+      height: 60px;
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    }
+    .navbar-brand {
+      font-size: 0.82rem; font-weight: 600;
+      color: var(--primary); letter-spacing: 0.02em;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      max-width: 160px; flex-shrink: 0;
+    }
+    .navbar-title {
+      flex: 1;
+      font-size: 0.93rem; font-weight: 600; color: var(--text);
+      text-align: center;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    .timer-chip {
+      display: flex; flex-direction: column; align-items: flex-end;
+      flex-shrink: 0;
+    }
+    .timer-label { font-size: 0.7rem; color: var(--muted); line-height: 1; margin-bottom: 2px; }
+    #countdown {
+      font-family: 'Courier New', monospace;
+      font-size: 1.2rem; font-weight: 700;
+      color: var(--primary);
+      background: var(--pri-light);
+      padding: 0.28rem 0.75rem;
+      border-radius: 8px;
+      letter-spacing: 1.5px;
+      border: 1.5px solid #c5cdf8;
+      transition: all 0.3s;
+    }
+    #countdown.warning {
+      color: #dc2626; background: #fff1f2;
+      border-color: #fca5a5;
+      animation: pulse 0.9s infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.72} }
+
+    /* Progress stripe below navbar */
+    .progress-strip {
+      height: 3px; width: 100%;
+      background: #e9ecff;
+    }
+    #progressFill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary), #7c8af7);
+      transition: width 0.8s ease;
+      border-radius: 0 2px 2px 0;
+    }
+
+    /* ── Main layout ── */
+    .main-content { max-width: 820px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+
+    /* ── Exam header card ── */
+    .exam-header {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 18px;
+      padding: 1.5rem 1.75rem;
+      margin-bottom: 1.75rem;
+      border-left: 5px solid var(--primary);
+    }
+    .exam-title { font-size: 1.5rem; font-weight: 700; color: var(--text); margin-bottom: 0.5rem; }
+    .exam-description { color: var(--muted); line-height: 1.7; font-size: 0.95rem; }
+    .exam-meta {
+      display: flex; gap: 1rem; flex-wrap: wrap;
+      margin-top: 0.9rem;
+    }
+    .exam-meta-chip {
+      display: flex; align-items: center; gap: 0.3rem;
+      font-size: 0.82rem; font-weight: 500; color: var(--primary);
+      background: var(--pri-light); padding: 0.3rem 0.75rem;
+      border-radius: 999px; border: 1px solid #c5cdf8;
+    }
+    .exam-meta-chip .material-icons-round { font-size: 0.95rem; }
+
+    /* ── Question Card ── */
+    .question-card {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 18px;
+      margin-bottom: 1.5rem;
+      transition: all 0.25s ease;
+      overflow: hidden;
+      position: relative;
+    }
+    .question-card:hover {
+      box-shadow: 0 8px 28px rgba(81,104,232,0.1);
+      border-color: #b9c4f5;
+    }
+    .question-card.unanswered { border-color: var(--danger) !important; }
+    .question-card.unanswered .card-header { background: #fff5f5 !important; }
+    .question-card.unanswered .question-number { color: var(--danger) !important; }
+    .question-card.unanswered .q-num-badge { background: var(--danger) !important; color: white !important; }
+
+    .card-header {
+      padding: 1rem 1.5rem;
+      display: flex; justify-content: space-between; align-items: center;
+      background: #f7f9ff;
+      border-bottom: 1.5px solid var(--border);
+    }
+    .question-number {
+      display: flex; align-items: center; gap: 0.6rem;
+      font-size: 0.95rem; font-weight: 700; color: var(--text);
+    }
+    .q-num-badge {
+      width: 26px; height: 26px; border-radius: 8px;
+      background: var(--primary); color: white;
+      font-size: 0.8rem; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .q-type-tag {
+      font-size: 0.72rem; font-weight: 600; color: var(--muted);
+      background: #eef0fd; padding: 0.15rem 0.55rem; border-radius: 6px;
+    }
+    .points-badge {
+      background: var(--pri-light); color: var(--primary);
+      border: 1px solid #c5cdf8;
+      padding: 0.3rem 0.8rem; border-radius: 999px;
+      font-size: 0.82rem; font-weight: 700;
+    }
+
+    .card-body { padding: 1.5rem; }
+    .question-text {
+      font-size: 1rem; color: var(--text);
+      line-height: 1.85; margin-bottom: 1.25rem;
+    }
+
+    /* ── Options ── */
+    .options-list { display: flex; flex-direction: column; gap: 0.65rem; }
+    .opt-input { display: none; }
+    .opt-label {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.85rem 1.1rem;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      cursor: pointer; transition: all 0.18s ease;
+      background: var(--surface); font-size: 0.95rem; color: var(--text);
+      user-select: none;
+    }
+    .opt-label:hover {
+      background: #f7f9ff; border-color: #b9c4f5;
+    }
+    .opt-input:checked + .opt-label {
+      background: var(--pri-light);
+      border-color: var(--primary);
+      color: #2d3fa8;
+      box-shadow: 0 2px 8px rgba(81,104,232,0.14);
+    }
+    .opt-icon {
+      width: 20px; height: 20px; border-radius: 50%;
+      border: 2px solid #c5cdf8; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.18s; background: white;
+    }
+    .opt-input[type="checkbox"] + .opt-label .opt-icon { border-radius: 6px; }
+    .opt-input:checked + .opt-label .opt-icon {
+      background: var(--primary); border-color: var(--primary);
+    }
+    .opt-input:checked + .opt-label .opt-icon::after {
+      content: ''; display: block;
+      width: 6px; height: 6px; border-radius: 50%;
+      background: white;
+    }
+    .opt-input[type="checkbox"]:checked + .opt-label .opt-icon::after {
+      width: 5px; height: 9px;
+      border: 2px solid white; border-top: none; border-left: none;
+      border-radius: 0; background: transparent;
+      transform: rotate(43deg) translateY(-1px);
+    }
+    .opt-text { flex: 1; line-height: 1.5; }
+
+    /* ── Fill Input ── */
+    .fill-input {
+      border: 1.5px solid var(--border); border-radius: 8px;
+      padding: 0.4rem 0.7rem; font-size: 0.95rem;
+      font-family: 'Noto Sans TC', sans-serif;
+      color: var(--text); background: white;
+      width: 120px; display: inline-block; margin: 2px 4px;
+      transition: all 0.2s;
+    }
+    .fill-input:focus {
+      outline: none; border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(81,104,232,0.12);
+    }
+
+    /* ── Submit Area ── */
+    .submit-container {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 18px;
+      padding: 1.5rem 1.75rem;
+      margin-top: 0.5rem;
+      display: flex; flex-direction: column; align-items: center; gap: 0.75rem;
+    }
+    .submit-hint {
+      font-size: 0.85rem; color: var(--muted); text-align: center;
+    }
+    .btn-submit {
+      background: var(--primary); color: white;
+      border: none; cursor: pointer;
+      padding: 0.9rem 2.5rem; border-radius: 12px;
+      font-weight: 700; font-size: 1rem;
+      font-family: 'Noto Sans TC', sans-serif;
+      transition: all 0.25s ease;
+      display: flex; align-items: center; gap: 0.5rem;
+      box-shadow: 0 4px 16px rgba(81,104,232,0.32);
+      min-width: 180px; justify-content: center;
+    }
+    .btn-submit:hover:not(:disabled) {
+      background: var(--pri-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(81,104,232,0.38);
+    }
+    .btn-submit:disabled { background: #b0bae8; cursor: not-allowed; box-shadow: none; }
+    .btn-submit .material-icons-round { font-size: 1.1rem; }
+
+    /* ── Warning Toast ── */
+    #warningAlert {
+      position: fixed; top: 76px; right: 1.25rem;
+      background: var(--warn-bg);
+      border: 1.5px solid var(--warn-border);
+      color: var(--warn-text);
+      padding: 0.85rem 1.25rem;
+      border-radius: 12px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+      z-index: 9999; display: none;
+      max-width: 300px;
+      animation: toastIn 0.3s ease;
+    }
+    #warningAlert .toast-title {
+      font-weight: 700; font-size: 0.9rem; margin-bottom: 0.3rem;
+      display: flex; align-items: center; gap: 0.4rem;
+    }
+    #warningAlert .toast-title .material-icons-round { font-size: 1.1rem; color: #c2410c; }
+    #warningAlert .toast-body { font-size: 0.83rem; line-height: 1.5; }
+    @keyframes toastIn {
+      from { transform: translateX(110%); opacity: 0; }
+      to   { transform: translateX(0);   opacity: 1; }
+    }
+
+    /* ── 強制交卷覆蓋層 ── */
+    #forceSubmitOverlay {
+      display: none; position: fixed; inset: 0; z-index: 99999;
+      background: rgba(127,29,29,0.55); backdrop-filter: blur(8px);
+      align-items: center; justify-content: center;
+    }
+    #forceSubmitOverlay.show { display: flex; }
+    #forceSubmitBox {
+      background: white; border-radius: 20px;
+      padding: 2.5rem 2rem; text-align: center;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.25);
+      animation: modalIn 0.35s cubic-bezier(.22,.68,0,1.1);
+      max-width: 320px; width: 90%;
+    }
+    @keyframes modalIn {
+      from { opacity:0; transform: scale(0.85) translateY(20px); }
+      to   { opacity:1; transform: scale(1) translateY(0); }
+    }
+
+    /* ── Unanswered Toast ── */
+    #unansweredToast {
+      position: fixed; top: 76px; left: 50%; transform: translateX(-50%);
+      background: #fff1f2;
+      border: 1.5px solid #fca5a5;
+      color: #991b1b;
+      padding: 0.85rem 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 6px 24px rgba(239,68,68,0.18);
+      z-index: 9999; display: none;
+      min-width: 280px; max-width: 90vw;
+      text-align: center;
+      animation: toastIn 0.3s ease;
+    }
+    #unansweredToast .toast-title {
+      font-weight: 700; font-size: 0.95rem; margin-bottom: 0.3rem;
+      display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+    }
+    #unansweredToast .toast-title .material-icons-round { font-size: 1.2rem; color: var(--danger); }
+    #unansweredToast .toast-body { font-size: 0.85rem; line-height: 1.6; color: #b91c1c; }
+
+    /* ── Image Modal ── */
+    .img-modal {
+      display: none; position: fixed; z-index: 10000;
+      inset: 0; background: rgba(0,0,0,0.88);
+      align-items: center; justify-content: center;
+    }
+    .img-modal.show { display: flex; }
+    .img-modal-inner {
+      position: relative; max-width: 90%; max-height: 90%;
+      animation: zoomIn 0.28s ease;
+    }
+    @keyframes zoomIn { from { opacity:0; transform:scale(0.65); } to { opacity:1; transform:scale(1); } }
+    .img-modal img { width: 100%; height: auto; border-radius: 10px; }
+    .img-modal-close {
+      position: absolute; top: -44px; right: 0;
+      width: 36px; height: 36px; border-radius: 50%;
+      background: rgba(255,255,255,0.15); color: white;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 1.4rem; transition: all 0.2s;
+    }
+    .img-modal-close:hover { background: rgba(255,255,255,0.3); }
+
+    .question-image {
+      cursor: pointer; transition: all 0.25s;
+      border: 2px solid transparent; border-radius: 10px;
+      max-width: 100%; display: block;
+    }
+    .question-image:hover { border-color: var(--primary); box-shadow: 0 4px 12px rgba(81,104,232,0.2); }
+
+    /* ── Spinner ── */
+    .loading-spinner {
+      display: flex; align-items: center; justify-content: center;
+      min-height: 55vh; flex-direction: column; gap: 1rem; color: var(--muted);
+    }
+    .spinner-circle {
+      width: 44px; height: 44px;
+      border: 4px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%; animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 600px) {
+      .main-content { padding: 1rem 0.85rem 3rem; }
+      .exam-title { font-size: 1.2rem; }
+      .card-body { padding: 1.1rem; }
+      .navbar-title { display: none; }
+      #countdown { font-size: 1rem; padding: 0.25rem 0.6rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="navbar-inner">
+      <div class="navbar-brand">緯豆考試系統</div>
+      <div class="navbar-title" id="userNameNav">載入中...</div>
+      <div class="timer-chip">
+        <div class="timer-label">剩餘時間</div>
+        <div id="countdown">--:--:--</div>
+      </div>
+    </div>
+    <div class="progress-strip"><div id="progressFill" style="width:100%"></div></div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="main-content" id="mainContent">
+    <div class="loading-spinner">
+      <div class="spinner-circle"></div>
+      <p>載入題目中，請稍候...</p>
+    </div>
+  </div>
+
+  <!-- 防作弊警告 Toast -->
+  <div id="warningAlert">
+    <div class="toast-title">
+      <span class="material-icons-round">warning</span>切換視窗警告
+    </div>
+    <div class="toast-body">
+      請勿切換視窗或最小化，否則將強制提交考試！
+      <br><small id="warningCountText"></small>
+    </div>
+  </div>
+
+  <!-- 強制交卷覆蓋層 -->
+  <div id="forceSubmitOverlay">
+    <div id="forceSubmitBox">
+      <span class="material-icons-round" style="font-size:3rem;color:#dc2626;display:block;margin-bottom:0.75rem">gpp_bad</span>
+      <div style="font-size:1.2rem;font-weight:700;color:#7f1d1d;margin-bottom:0.5rem">考試已強制提交</div>
+      <div style="font-size:0.9rem;color:#991b1b">切換視窗次數超過限制，系統已自動交卷。</div>
+      <div style="margin-top:1rem;font-size:0.85rem;color:#b91c1c" id="forceSubmitStatus">提交中...</div>
+    </div>
+  </div>
+
+  <!-- 未作答提示 Toast -->
+  <div id="unansweredToast">
+    <div class="toast-title">
+      <span class="material-icons-round">error</span>尚有未作答題目
+    </div>
+    <div class="toast-body" id="unansweredToastMsg"></div>
+  </div>
+
+  <!-- Image Modal -->
+  <div id="imgModal" class="img-modal" onclick="closeImg()">
+    <div class="img-modal-inner" onclick="event.stopPropagation()">
+      <div class="img-modal-close" onclick="closeImg()">✕</div>
+      <img id="modalImg" src="" alt="放大圖片">
+    </div>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const EXAM_ID = parseInt(params.get('id') || '0');
+    let examData = null;
+    let questions = [];
+    let endTime = null;
+    let totalDuration = 0;
+    let timeDiff = 0;
+    let countdownTimer = null;
+    let warningCount = 6;
+    let blurTimer = null;
+    let submitting = false;
+
+    const TYPE_LABEL = { single:'單選題', multiple:'多選題', fill:'填空題', truefalse:'是非題', essay:'問答題' };
+
+    function escHtml(s) {
+      return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ---- 載入考試 ----
+    async function loadExam() {
+      if (!EXAM_ID) { location.href = '/index.html'; return; }
+      try {
+        const res = await fetch(`/api/exam/${EXAM_ID}/questions`);
+        if (res.status === 401) { location.href = '/login.html'; return; }
+        if (!res.ok) {
+          const err = await res.json();
+          showError(err.error || '無法載入考試');
+          return;
+        }
+        const data = await res.json();
+        examData = data.exam;
+        questions = data.questions;
+
+        const srvNow = new Date(data.serverTime).getTime();
+        const cliNow = Date.now();
+        timeDiff = cliNow - srvNow;
+        const examEndRaw = new Date(examData.end_time).getTime();
+        const durationMs = examData.duration * 60 * 1000;
+        endTime = Math.min(examEndRaw, srvNow + durationMs);
+        totalDuration = endTime - srvNow;
+
+        renderExam();
+        startCountdown();
+        startAntiCheat();
+        requestFullscreen();
+      } catch (e) {
+        showError('網路錯誤：' + e.message);
+      }
+    }
+
+    function showError(msg) {
+      document.getElementById('mainContent').innerHTML = `
+        <div style="text-align:center;padding:4rem 1rem;">
+          <span class="material-icons-round" style="font-size:3.5rem;color:#fca5a5;display:block;margin-bottom:0.75rem">error_outline</span>
+          <p style="font-size:1.1rem;color:#dc2626;font-weight:600">${escHtml(msg)}</p>
+          <a href="/index.html" style="display:inline-block;margin-top:1rem;padding:0.6rem 1.5rem;background:#5168e8;color:white;border-radius:10px;text-decoration:none;font-weight:600">返回考試列表</a>
+        </div>`;
+    }
+
+    // ---- 渲染題目 ----
+    function renderExam() {
+      document.getElementById('userNameNav').textContent = examData.title;
+      document.title = `${examData.title} - 緯豆考試系統`;
+
+      const totalPts = questions.reduce((s,q) => s + parseFloat(q.points || 0), 0);
+
+      let html = `
+        <div class="exam-header">
+          <h1 class="exam-title">${escHtml(examData.title)}</h1>
+          ${examData.description ? `<p class="exam-description">${escHtml(examData.description).replace(/\n/g,'<br>')}</p>` : ''}
+          <div class="exam-meta">
+            <span class="exam-meta-chip"><span class="material-icons-round">format_list_numbered</span>共 ${questions.length} 題</span>
+            <span class="exam-meta-chip">總分 ${totalPts} 分</span>
+            <span class="exam-meta-chip"><span class="material-icons-round">timer</span>${examData.duration} 分鐘</span>
+          </div>
+        </div>
+        <form id="examForm">`;
+
+      questions.forEach((q, idx) => {
+        const typeLabel = TYPE_LABEL[q.question_type] || q.question_type;
+        html += `
+          <div class="question-card" id="qcard-${q.id}">
+            <div class="card-header">
+              <span class="question-number">
+                <span class="q-num-badge">${idx+1}</span>
+                第 ${idx+1} 題
+                <span class="q-type-tag">${typeLabel}</span>
+              </span>
+              <span class="points-badge">${q.points} 分</span>
+            </div>
+            <div class="card-body">
+              <div class="question-text">`;
+
+        if (q.question_type === 'fill') {
+          html += renderFillText(q);
+        } else {
+          html += `<div class="whitespace-pre-line">${escHtml(q.question_text)}</div>`;
+        }
+
+        if (q.image_path) {
+          html += `<div class="mt-4"><img src="${escHtml(q.image_path)}" alt="題目圖片"
+            class="question-image max-w-sm" onclick="openImg(this.src)"
+            title="點擊放大圖片" onerror="this.style.display='none'"></div>`;
+        }
+
+        html += `</div>`; // end question-text
+
+        if (q.question_type !== 'fill') {
+          html += `<div class="options-list">`;
+          if (q.question_type === 'truefalse') {
+            html += renderRadio(q.id, 'true', '○ 是（正確）');
+            html += renderRadio(q.id, 'false', '✕ 否（錯誤）');
+          } else {
+            q.options.forEach(opt => {
+              const inputType = q.question_type === 'multiple' ? 'checkbox' : 'radio';
+              const name = q.question_type === 'multiple' ? `answers[${q.id}][]` : `answers[${q.id}]`;
+              html += `
+                <div>
+                  <input class="opt-input" type="${inputType}" name="${name}" value="${escHtml(opt.id)}"
+                    id="opt_${q.id}_${opt.id}">
+                  <label class="opt-label" for="opt_${q.id}_${opt.id}">
+                    <span class="opt-icon"></span>
+                    <span class="opt-text">${escHtml(opt.text)}</span>
+                  </label>
+                </div>`;
+            });
+          }
+          html += `</div>`;
+        }
+
+        html += `</div></div>`; // card-body, question-card
+      });
+
+      html += `
+          <div class="submit-container">
+            <p class="submit-hint">
+              <span class="material-icons-round" style="font-size:1rem;vertical-align:middle;color:#9bacd0">info</span>
+              確認所有題目已作答後再按下提交，提交後無法修改
+            </p>
+            <button type="button" class="btn-submit" onclick="checkAndSubmit()">
+              <span class="material-icons-round">send</span>提交考試
+            </button>
+          </div>
+        </form>`;
+
+      document.getElementById('mainContent').innerHTML = html;
+
+    }
+
+    function renderFillText(q) {
+      const parts = q.question_text.split('$');
+      let html = '';
+      parts.forEach((part, i) => {
+        html += escHtml(part).replace(/\n/g,'<br>');
+        if (i < parts.length - 1) {
+          html += `<input type="text" class="fill-input" name="answers[${q.id}][]" placeholder="請填入答案">`;
+        }
+      });
+      return html;
+    }
+
+    function renderRadio(qId, val, label) {
+      return `
+        <div>
+          <input class="opt-input" type="radio" name="answers[${qId}]" value="${val}" id="opt_${qId}_${val}">
+          <label class="opt-label" for="opt_${qId}_${val}">
+            <span class="opt-icon"></span>
+            <span class="opt-text">${label}</span>
+          </label>
+        </div>`;
+    }
+
+    // ---- 倒計時 ----
+    function startCountdown() {
+      countdownTimer = setInterval(updateCountdown, 1000);
+      updateCountdown();
+    }
+
+    function updateCountdown() {
+      const now = Date.now() - timeDiff;
+      const dist = endTime - now;
+      const fill = document.getElementById('progressFill');
+
+      if (dist <= 0) {
+        document.getElementById('countdown').textContent = '時間已到';
+        if (fill) fill.style.width = '0%';
+        clearInterval(countdownTimer);
+        autoSubmit();
+        return;
+      }
+
+      const h = Math.floor(dist / 3600000);
+      const m = Math.floor((dist % 3600000) / 60000);
+      const s = Math.floor((dist % 60000) / 1000);
+      document.getElementById('countdown').textContent =
+        `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+
+      const pct = Math.max(0, Math.min(100, (dist / totalDuration) * 100));
+      if (fill) fill.style.width = pct + '%';
+
+      const cdEl = document.getElementById('countdown');
+      if (dist < 5 * 60 * 1000) cdEl.classList.add('warning');
+      else cdEl.classList.remove('warning');
+    }
+
+    // ---- 防作弊 ----
+    function startAntiCheat() {
+      window.onbeforeunload = (e) => {
+        if (!submitting) { e.returnValue = '離開頁面將遺失所有答案，確定要離開嗎？'; }
+      };
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') {
+          logVisibility('visibility_change', 'hidden');
+          scheduleBlurWarning();
+        }
+      });
+      window.addEventListener('blur', () => {
+        logVisibility('window_blur', 'blur');
+        scheduleBlurWarning();
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'PrintScreen') handleScreenshot();
+        if (e.altKey && e.key === 'PrintScreen') handleScreenshot();
+        if ((e.ctrlKey||e.metaKey) && (e.key==='r'||e.key==='R')) e.preventDefault();
+        if (e.key === 'F12') e.preventDefault();
+        if (e.ctrlKey && e.shiftKey && (e.key==='I'||e.key==='J')) e.preventDefault();
+        if ((e.ctrlKey||e.metaKey) && e.key==='u') e.preventDefault();
+      });
+      document.addEventListener('contextmenu', e => e.preventDefault());
+      document.addEventListener('paste', (e) => {
+        if (e.clipboardData) {
+          for (const item of e.clipboardData.items) {
+            if (item.type.startsWith('image')) { handleScreenshot(); break; }
+          }
+        }
+      });
+      document.addEventListener('fullscreenchange', () => {
+        if (!document.fullscreenElement) scheduleBlurWarning();
+      });
+    }
+
+    function scheduleBlurWarning() {
+      if (blurTimer) clearTimeout(blurTimer);
+      blurTimer = setTimeout(handleBlur, 1000);
+    }
+
+    function handleBlur() {
+      warningCount--;
+      logVisibility('warning', String(warningCount));
+
+      if (warningCount <= 0) {
+        // 次數用盡，強制交卷
+        autoSubmit();
+        return;
+      }
+
+      const alertEl = document.getElementById('warningAlert');
+      document.getElementById('warningCountText').textContent =
+        `還剩 ${warningCount} 次機會，超過將自動交卷`;
+      alertEl.style.display = 'block';
+      setTimeout(() => { alertEl.style.display = 'none'; }, 3500);
+    }
+
+    function handleScreenshot() {
+      fetch(`/api/exam/${EXAM_ID}/screenshot`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ timestamp: new Date().toISOString() }),
+      }).catch(() => {});
+      alert('⚠️ 檢測到截圖行為，此行為已被記錄。');
+    }
+
+    function logVisibility(action, state) {
+      fetch(`/api/exam/${EXAM_ID}/visibility`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, state, timestamp: new Date().toISOString() }),
+      }).catch(() => {});
+    }
+
+    function requestFullscreen() {
+      try {
+        const el = document.documentElement;
+        if (el.requestFullscreen) el.requestFullscreen();
+        else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+      } catch { /* ignore */ }
+    }
+
+    // ---- 收集答案 ----
+    function collectAnswers() {
+      const form = document.getElementById('examForm');
+      const answers = {};
+      questions.forEach(q => {
+        if (q.question_type === 'fill') {
+          const inputs = form.querySelectorAll(`input[name="answers[${q.id}][]"]`);
+          answers[q.id] = Array.from(inputs).map(i => i.value);
+        } else if (q.question_type === 'multiple') {
+          const checked = form.querySelectorAll(`input[name="answers[${q.id}][]"]:checked`);
+          answers[q.id] = Array.from(checked).map(i => i.value);
+        } else {
+          const radio = form.querySelector(`input[name="answers[${q.id}]"]:checked`);
+          answers[q.id] = radio ? radio.value : null;
+        }
+      });
+      return answers;
+    }
+
+    // ---- 提交前檢查 ----
+    let unansweredToastTimer = null;
+
+    function showUnansweredToast(nums) {
+      const toast = document.getElementById('unansweredToast');
+      const msg = document.getElementById('unansweredToastMsg');
+      msg.textContent = `第 ${nums.join('、')} 題尚未作答，請完成所有題目後再提交。`;
+      toast.style.display = 'block';
+      if (unansweredToastTimer) clearTimeout(unansweredToastTimer);
+      unansweredToastTimer = setTimeout(() => { toast.style.display = 'none'; }, 4000);
+    }
+
+    function checkAndSubmit() {
+      const answers = collectAnswers();
+      const unanswered = [];
+      document.querySelectorAll('.question-card').forEach(c => c.classList.remove('unanswered'));
+
+      questions.forEach((q, idx) => {
+        let answered = false;
+        const ans = answers[q.id];
+        if (q.question_type === 'fill') {
+          answered = Array.isArray(ans) && ans.length > 0 && ans.every(v => v.trim() !== '');
+        } else if (q.question_type === 'multiple') {
+          answered = Array.isArray(ans) && ans.length > 0;
+        } else {
+          answered = ans !== null && ans !== undefined && ans !== '';
+        }
+        if (!answered) {
+          unanswered.push(idx + 1);
+          const card = document.getElementById(`qcard-${q.id}`);
+          if (card) card.classList.add('unanswered');
+        }
+      });
+
+      if (unanswered.length > 0) {
+        // 捲到第一題未答
+        const first = document.querySelector('.question-card.unanswered');
+        if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // 顯示 toast，封鎖交卷
+        showUnansweredToast(unanswered);
+        return;
+      }
+
+      // 全部作答才允許確認交卷
+      if (confirm('確定要提交考試嗎？提交後將無法修改答案。')) {
+        doSubmit(answers);
+      }
+    }
+
+    function autoSubmit() {
+      if (submitting) return;
+      // 顯示強制交卷覆蓋層（不管有無作答，直接送出）
+      document.getElementById('forceSubmitOverlay').classList.add('show');
+      document.getElementById('warningAlert').style.display = 'none';
+      clearInterval(countdownTimer);
+      window.onbeforeunload = null;
+      doSubmit(collectAnswers(), true);
+    }
+
+    async function doSubmit(answers, isForce = false) {
+      if (submitting) return;
+      submitting = true;
+      clearInterval(countdownTimer);
+      window.onbeforeunload = null;
+
+      if (!isForce) {
+        const btn = document.querySelector('.btn-submit');
+        if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-circle" style="width:20px;height:20px;border-width:3px;display:inline-block;margin-right:6px"></span>提交中...'; }
+      }
+
+      try {
+        const res = await fetch(`/api/exam/${EXAM_ID}/submit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ answers }),
+        });
+        if (res.ok) {
+          if (isForce) {
+            document.getElementById('forceSubmitStatus').textContent = '提交成功，即將返回...';
+          }
+          setTimeout(() => { location.href = '/index.html'; }, isForce ? 1500 : 0);
+        } else {
+          const err = await res.json();
+          submitting = false;
+          if (isForce) {
+            document.getElementById('forceSubmitStatus').textContent = '提交失敗：' + (err.error || '請聯絡監考人員');
+          } else {
+            alert('提交失敗：' + (err.error || '未知錯誤'));
+            const btn = document.querySelector('.btn-submit');
+            if (btn) { btn.disabled = false; btn.innerHTML = '<span class="material-icons-round">send</span>提交考試'; }
+          }
+        }
+      } catch (e) {
+        submitting = false;
+        if (isForce) {
+          document.getElementById('forceSubmitStatus').textContent = '網路錯誤，請聯絡監考人員';
+        } else {
+          alert('網路錯誤：' + e.message);
+          const btn = document.querySelector('.btn-submit');
+          if (btn) { btn.disabled = false; btn.innerHTML = '<span class="material-icons-round">send</span>提交考試'; }
+        }
+      }
+    }
+
+    // ---- 圖片 Modal ----
+    function openImg(src) {
+      document.getElementById('modalImg').src = src;
+      document.getElementById('imgModal').classList.add('show');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeImg() {
+      document.getElementById('imgModal').classList.remove('show');
+      document.body.style.overflow = 'auto';
+    }
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeImg(); });
+
+    loadExam();
+  </script>
+</body>
+</html>

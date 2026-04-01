@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>考試列表 - 緯豆考試系統</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --bg:        #f0f4ff;
+      --surface:   #ffffff;
+      --border:    #dde4fb;
+      --primary:   #5168e8;
+      --pri-light: #eef0fd;
+      --pri-hover: #3f52c7;
+      --text:      #1e2a5a;
+      --muted:     #6b7ea8;
+      --success:   #10b981;
+      --suc-light: #ecfdf5;
+      --danger:    #ef4444;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Topbar ── */
+    .topbar {
+      background: var(--surface);
+      border-bottom: 1.5px solid var(--border);
+      position: sticky; top: 0; z-index: 100;
+      padding: 0 1.5rem;
+      height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 1px 12px rgba(81,104,232,0.08);
+    }
+    .topbar-logo {
+      font-size: 1.15rem; font-weight: 700; color: var(--primary);
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .topbar-logo .logo-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--primary); display: inline-block;
+    }
+    .logout-btn {
+      display: flex; align-items: center; gap: 0.3rem;
+      color: var(--muted); font-size: 0.9rem; font-weight: 500;
+      cursor: pointer; border: none; background: none;
+      padding: 0.4rem 0.8rem; border-radius: 8px;
+      transition: all 0.2s; font-family: 'Noto Sans TC', sans-serif;
+    }
+    .logout-btn:hover { background: #f1f3ff; color: var(--primary); }
+
+    /* ── Hero ── */
+    .hero {
+      background: linear-gradient(135deg, #eef0fd 0%, #e8f4ff 100%);
+      border-bottom: 1.5px solid var(--border);
+      padding: 1.75rem 1.5rem;
+    }
+    .hero-inner {
+      max-width: 1100px; margin: 0 auto;
+      display: flex; align-items: center; gap: 1rem;
+    }
+    .hero-avatar {
+      width: 48px; height: 48px; border-radius: 50%;
+      background: var(--primary);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; box-shadow: 0 4px 12px rgba(81,104,232,0.3);
+    }
+    .hero-avatar .material-icons-round { color: white; font-size: 1.6rem; }
+    .hero-title { font-size: 1.25rem; font-weight: 700; color: var(--text); }
+    .hero-sub   { font-size: 0.9rem; color: var(--muted); margin-top: 2px; }
+
+    /* ── Content ── */
+    .page-content { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+    .section-header {
+      display: flex; align-items: center; gap: 0.6rem;
+      margin-bottom: 1.25rem;
+    }
+    .section-icon {
+      width: 32px; height: 32px; border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .section-icon.blue { background: var(--pri-light); }
+    .section-icon.blue .material-icons-round { color: var(--primary); font-size: 1.1rem; }
+    .section-icon.green { background: var(--suc-light); }
+    .section-icon.green .material-icons-round { color: var(--success); font-size: 1.1rem; }
+    .section-title { font-size: 1.05rem; font-weight: 700; color: var(--text); }
+    .section-count {
+      background: var(--pri-light); color: var(--primary);
+      font-size: 0.78rem; font-weight: 600;
+      padding: 0.15rem 0.6rem; border-radius: 999px;
+    }
+
+    /* ── Cards Grid ── */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 3rem;
+    }
+
+    /* ── Exam Card ── */
+    .exam-card {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 18px;
+      overflow: hidden;
+      transition: all 0.25s ease;
+      cursor: default;
+      animation: fadeUp 0.45s ease-out both;
+    }
+    .exam-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 32px rgba(81,104,232,0.13);
+      border-color: #b9c4f5;
+    }
+    @keyframes fadeUp {
+      from { opacity:0; transform: translateY(12px); }
+      to   { opacity:1; transform: translateY(0); }
+    }
+
+    .card-accent {
+      height: 5px;
+      background: linear-gradient(90deg, var(--primary) 0%, #7c8af7 100%);
+    }
+    .card-accent.green {
+      background: linear-gradient(90deg, var(--success) 0%, #34d399 100%);
+    }
+
+    .card-top {
+      padding: 1.25rem 1.25rem 0.75rem;
+      display: flex; justify-content: space-between; align-items: flex-start;
+      gap: 0.75rem;
+    }
+    .card-title {
+      font-size: 1.05rem; font-weight: 700; color: var(--text);
+      line-height: 1.4; flex: 1;
+    }
+    .status-badge {
+      flex-shrink: 0;
+      font-size: 0.75rem; font-weight: 600;
+      padding: 0.3rem 0.75rem; border-radius: 999px;
+    }
+    .badge-blue  { background: var(--pri-light); color: var(--primary); }
+    .badge-green { background: var(--suc-light); color: #059669; }
+    .badge-gray  { background: #f1f5f9; color: #64748b; }
+
+    .card-body { padding: 0 1.25rem 1.25rem; }
+    .card-divider {
+      height: 1px; background: var(--border);
+      margin: 0.75rem 0;
+    }
+
+    .info-row {
+      display: flex; align-items: center; gap: 0.5rem;
+      font-size: 0.875rem; color: var(--muted);
+      margin-bottom: 0.5rem;
+    }
+    .info-row .material-icons-round {
+      font-size: 1rem; color: #9bacd0; flex-shrink: 0;
+    }
+
+    .card-footer {
+      padding: 0 1.25rem 1.25rem;
+      display: flex; justify-content: flex-end;
+    }
+
+    /* ── Buttons ── */
+    .btn-enter {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      background: var(--primary); color: white;
+      font-size: 0.9rem; font-weight: 600;
+      padding: 0.6rem 1.25rem; border-radius: 10px;
+      text-decoration: none; border: none; cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: 'Noto Sans TC', sans-serif;
+      box-shadow: 0 3px 10px rgba(81,104,232,0.3);
+    }
+    .btn-enter:hover {
+      background: var(--pri-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(81,104,232,0.35);
+    }
+    .btn-enter .material-icons-round { font-size: 1rem; }
+
+    .btn-view {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      background: var(--suc-light); color: #059669;
+      font-size: 0.9rem; font-weight: 600;
+      padding: 0.6rem 1.25rem; border-radius: 10px;
+      text-decoration: none; border: none; cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: 'Noto Sans TC', sans-serif;
+    }
+    .btn-view:hover { background: #d1fae5; transform: translateY(-1px); }
+    .btn-view .material-icons-round { font-size: 1rem; }
+
+    /* ── Empty State ── */
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center; padding: 3.5rem 1rem;
+      color: var(--muted);
+    }
+    .empty-state .material-icons-round {
+      font-size: 3.5rem; color: #c7d2f0; display: block; margin-bottom: 0.75rem;
+    }
+    .empty-state p { font-size: 1rem; }
+
+    /* ── Skeleton ── */
+    .skeleton {
+      background: linear-gradient(90deg, #eef0fd 25%, #e2e6fb 50%, #eef0fd 75%);
+      background-size: 200% 100%;
+      animation: skel 1.3s infinite;
+      border-radius: 8px;
+    }
+    @keyframes skel {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* ── Notice Modal ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; z-index: 1000;
+      background: rgba(15,23,80,0.45); backdrop-filter: blur(6px);
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal-box {
+      background: var(--surface);
+      border-radius: 22px;
+      padding: 2.25rem 2rem;
+      width: 90%; max-width: 480px;
+      max-height: 85vh; overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(15,23,80,0.2);
+      animation: modalIn 0.3s cubic-bezier(.22,.68,0,1.2);
+    }
+    @keyframes modalIn {
+      from { opacity:0; transform: scale(0.9) translateY(16px); }
+      to   { opacity:1; transform: scale(1) translateY(0); }
+    }
+    .modal-title {
+      font-size: 1.3rem; font-weight: 700; color: var(--text);
+      text-align: center; margin-bottom: 1.5rem;
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+    }
+    .modal-title .material-icons-round { color: var(--primary); }
+
+    .notice-item {
+      display: flex; align-items: flex-start; gap: 0.6rem;
+      padding: 0.6rem 0.75rem; border-radius: 10px;
+      background: var(--pri-light); margin-bottom: 0.5rem;
+      font-size: 0.9rem; color: #3a4f8a;
+    }
+    .notice-item .material-icons-round { color: var(--primary); font-size: 1rem; flex-shrink: 0; margin-top:1px; }
+
+    .agree-row {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.85rem 1rem; border-radius: 12px;
+      background: #f8f9ff; border: 1.5px solid var(--border);
+      margin: 1.25rem 0 1rem; cursor: pointer;
+    }
+    .agree-row input[type="checkbox"] {
+      width: 18px; height: 18px; cursor: pointer; accent-color: var(--primary);
+    }
+    .agree-row label { font-size: 0.9rem; color: var(--muted); cursor: pointer; }
+
+    .btn-confirm {
+      width: 100%; padding: 0.85rem;
+      background: var(--primary); color: white;
+      border: none; border-radius: 12px;
+      font-size: 1rem; font-weight: 600; cursor: pointer;
+      transition: all 0.2s; font-family: 'Noto Sans TC', sans-serif;
+    }
+    .btn-confirm:disabled { background: #c4cbef; cursor: not-allowed; }
+    .btn-confirm:not(:disabled):hover { background: var(--pri-hover); box-shadow: 0 4px 16px rgba(81,104,232,0.35); }
+
+    @media (max-width: 640px) {
+      .hero { padding: 1.25rem 1rem; }
+      .page-content { padding: 1.25rem 1rem 3rem; }
+      .topbar { padding: 0 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="topbar-logo">
+      <span class="logo-dot"></span>
+      緯豆考試系統
+    </div>
+    <button id="logoutBtn" class="logout-btn">
+      <span class="material-icons-round" style="font-size:1.1rem">logout</span>登出
+    </button>
+  </header>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-inner">
+      <div class="hero-avatar">
+        <span class="material-icons-round">person</span>
+      </div>
+      <div>
+        <div class="hero-title" id="welcomeMsg">歡迎回來</div>
+        <div class="hero-sub">祝您考試順利</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notice Modal -->
+  <div id="noticeModal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-title">
+        <span class="material-icons-round">info</span>考試注意事項
+      </div>
+      <div>
+        <div class="notice-item"><span class="material-icons-round">do_not_disturb_on</span>考試期間請開啟勿擾模式</div>
+        <div class="notice-item"><span class="material-icons-round">brightness_high</span>確認螢幕顯示時間設定為最長</div>
+        <div class="notice-item"><span class="material-icons-round">tab_unselected</span>考試時請勿切換視窗或離開考試頁面</div>
+        <div class="notice-item"><span class="material-icons-round">timer_off</span>考試時間結束後系統將自動提交答案</div>
+        <div class="notice-item"><span class="material-icons-round">pan_tool</span>如遇技術問題，請立即舉手表示</div>
+      </div>
+      <div class="agree-row">
+        <input type="checkbox" id="noticeCheckbox">
+        <label for="noticeCheckbox">我已閱讀並同意上述注意事項</label>
+      </div>
+      <button id="confirmBtn" class="btn-confirm" disabled>確認開始考試</button>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <main class="page-content">
+
+    <!-- 可參加的考試 -->
+    <div class="mb-10">
+      <div class="section-header">
+        <div class="section-icon blue">
+          <span class="material-icons-round">assignment</span>
+        </div>
+        <span class="section-title">可參加的考試</span>
+        <span class="section-count" id="availableCount">0</span>
+      </div>
+      <div class="cards-grid" id="availableExams">
+        <!-- skeleton -->
+        <div class="exam-card">
+          <div class="card-accent"></div>
+          <div class="card-top"><div class="skeleton h-5 w-3/4"></div></div>
+          <div class="card-body">
+            <div class="skeleton h-4 w-1/2 mb-2"></div>
+            <div class="skeleton h-4 w-2/3 mb-2"></div>
+            <div class="skeleton h-4 w-1/2"></div>
+          </div>
+          <div class="card-footer"><div class="skeleton h-9 w-24"></div></div>
+        </div>
+        <div class="exam-card">
+          <div class="card-accent"></div>
+          <div class="card-top"><div class="skeleton h-5 w-2/3"></div></div>
+          <div class="card-body">
+            <div class="skeleton h-4 w-1/2 mb-2"></div>
+            <div class="skeleton h-4 w-3/4"></div>
+          </div>
+          <div class="card-footer"><div class="skeleton h-9 w-24"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 已完成考試 -->
+    <div>
+      <div class="section-header">
+        <div class="section-icon green">
+          <span class="material-icons-round">assignment_turned_in</span>
+        </div>
+        <span class="section-title">已完成考試</span>
+        <span class="section-count" id="completedCount">0</span>
+      </div>
+      <div class="cards-grid" id="completedExams">
+        <div class="exam-card">
+          <div class="card-accent green"></div>
+          <div class="card-top"><div class="skeleton h-5 w-3/4"></div></div>
+          <div class="card-body">
+            <div class="skeleton h-4 w-1/2 mb-2"></div>
+            <div class="skeleton h-4 w-2/3"></div>
+          </div>
+          <div class="card-footer"><div class="skeleton h-9 w-24"></div></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    let canViewRecord = false;
+
+    function formatDate(str) {
+      if (!str) return '-';
+      const d = new Date(str);
+      return d.toLocaleString('zh-TW', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+    }
+    function escHtml(str) {
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function renderAvailable(exams) {
+      const el = document.getElementById('availableExams');
+      document.getElementById('availableCount').textContent = exams.length;
+      if (!exams.length) {
+        el.innerHTML = `<div class="empty-state">
+          <span class="material-icons-round">event_busy</span>
+          <p>目前沒有可參加的考試</p>
+        </div>`;
+        return;
+      }
+      el.innerHTML = exams.map((e, i) => `
+        <div class="exam-card" style="animation-delay:${i * 0.07}s">
+          <div class="card-accent"></div>
+          <div class="card-top">
+            <div class="card-title">${escHtml(e.title)}</div>
+            <span class="status-badge badge-blue">可考試</span>
+          </div>
+          <div class="card-body">
+            <div class="card-divider"></div>
+            <div class="info-row"><span class="material-icons-round">timer</span>考試時長 ${e.duration} 分鐘</div>
+            <div class="info-row"><span class="material-icons-round">event</span>開始 ${formatDate(e.start_time)}</div>
+            <div class="info-row"><span class="material-icons-round">event_busy</span>截止 ${formatDate(e.end_time)}</div>
+          </div>
+          <div class="card-footer">
+            <a href="/exam.html?id=${e.id}" class="btn-enter">
+              <span class="material-icons-round">edit_note</span>進入考試
+            </a>
+          </div>
+        </div>`).join('');
+    }
+
+    function renderCompleted(exams) {
+      const el = document.getElementById('completedExams');
+      document.getElementById('completedCount').textContent = exams.length;
+      if (!exams.length) {
+        el.innerHTML = `<div class="empty-state">
+          <span class="material-icons-round">assignment_late</span>
+          <p>尚未完成任何考試</p>
+        </div>`;
+        return;
+      }
+      el.innerHTML = exams.map((e, i) => `
+        <div class="exam-card" style="animation-delay:${i * 0.07}s">
+          <div class="card-accent green"></div>
+          <div class="card-top">
+            <div class="card-title">${escHtml(e.title)}</div>
+            <span class="status-badge badge-green">已完成</span>
+          </div>
+          <div class="card-body">
+            <div class="card-divider"></div>
+            <div class="info-row"><span class="material-icons-round">scoreboard</span>得分：待公布</div>
+            <div class="info-row"><span class="material-icons-round">update</span>提交 ${formatDate(e.submit_time)}</div>
+          </div>
+          <div class="card-footer">
+            ${canViewRecord ? `<a href="/result.html?id=${e.id}" class="btn-view">
+              <span class="material-icons-round">visibility</span>查看答案</a>` : ''}
+          </div>
+        </div>`).join('');
+    }
+
+    async function loadExams() {
+      try {
+        const [listRes, settingsRes] = await Promise.all([
+          fetch('/api/exam/list'),
+          fetch('/api/exam/settings'),
+        ]);
+        if (listRes.status === 401) { window.location.href = '/login.html'; return; }
+        const { available, completed } = await listRes.json();
+        const settings = settingsRes.ok ? await settingsRes.json() : {};
+        canViewRecord = settings.canViewRecord || false;
+        renderAvailable(available || []);
+        renderCompleted(completed || []);
+      } catch {
+        document.getElementById('availableExams').innerHTML =
+          '<div class="empty-state"><span class="material-icons-round">wifi_off</span><p>載入失敗，請重新整理頁面</p></div>';
+      }
+    }
+
+    (async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (!res.ok) { window.location.href = '/login.html'; return; }
+        const me = await res.json();
+        document.getElementById('welcomeMsg').textContent = `歡迎回來，${me.name}`;
+      } catch {
+        window.location.href = '/login.html'; return;
+      }
+      await loadExams();
+    })();
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      window.location.href = '/login.html';
+    });
+
+    // Notice Modal
+    const modal = document.getElementById('noticeModal');
+    // 使用 sessionStorage：每次登入（新分頁）都會顯示，同一次瀏覽期間才不重複
+    if (!sessionStorage.getItem('noticeConfirmed')) {
+      modal.classList.add('show');
+    }
+    document.getElementById('noticeCheckbox').addEventListener('change', function() {
+      document.getElementById('confirmBtn').disabled = !this.checked;
+    });
+    document.getElementById('confirmBtn').addEventListener('click', function() {
+      if (this.disabled) return;
+      sessionStorage.setItem('noticeConfirmed', 'true');
+      modal.classList.remove('show');
+    });
+    modal.addEventListener('click', function(e) {
+      if (e.target === modal) { /* 不允許點外部關閉 */ }
+    });
+  </script>
+</body>
+</html>
