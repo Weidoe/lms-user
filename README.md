@@ -1,7 +1,5 @@
 # 緯豆考試系統 - Node.js 版（學生考試前端）
 
-本專案為原 PHP 版 `exam_system` 的 Node.js 重建版，專注於**學生考試端**的前端體驗，使用 Express.js + MySQL2 + 原生 HTML/CSS/JS（TailwindCSS CDN）。
-
 ## 功能列表
 
 | 功能 | 說明 |
@@ -16,7 +14,6 @@
 ## 安裝步驟
 
 ```bash
-cd New
 npm install
 ```
 
